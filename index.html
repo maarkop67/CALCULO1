@@ -2,93 +2,81 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Resolución de Desigualdades</title>
+  <title>Desigualdades Lineales y Cuadráticas</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 30px; background: #f4f4f4; }
-    h1 { color: #333; }
-    input, button { padding: 10px; margin: 10px 0; width: 100%; max-width: 500px; }
-    #resultado { background: white; padding: 20px; border-radius: 10px; margin-top: 20px; }
+    body { font-family: Arial; background: #f9f9f9; padding: 20px; }
+    input, button { padding: 10px; font-size: 16px; margin-top: 10px; width: 100%; max-width: 500px; }
+    #grafica { width: 100%; max-width: 700px; height: 400px; margin-top: 30px; }
+    #resultado { margin-top: 20px; background: white; padding: 20px; border-radius: 10px; }
   </style>
 </head>
 <body>
 
-  <h1>Resolver Desigualdades Lineales y Cuadráticas</h1>
-  <input type="text" id="desigualdad" placeholder="Ej. 2x+3>5 o x^2 - 4x + 3 <= 0">
+  <h2>Resolver desigualdades</h2>
+  <input type="text" id="desigualdad" placeholder="Ej: x^2 - 4x + 3 <= 0 o 2x + 5 > 3">
   <button onclick="resolver()">Resolver</button>
-
   <div id="resultado"></div>
+  <div id="grafica"></div>
 
   <script>
     function resolver() {
       const input = document.getElementById("desigualdad").value.replace(/\s/g, "");
-      const resDiv = document.getElementById("resultado");
+      const resultado = document.getElementById("resultado");
+      const grafica = document.getElementById("grafica");
 
-      try {
-        if (input.includes("^2")) {
-          resolverCuadratica(input);
-        } else {
-          resolverLineal(input);
+      let matchLineal = input.match(/^([+-]?\d*)x([<>]=?|=)([+-]?\d+)$/);
+      let matchCuad = input.match(/^([+-]?\d*)x\^2([+-]?\d*)x([+-]?\d*)([<>]=?|=)0$/);
+
+      if (matchLineal) {
+        let a = parseFloat(matchLineal[1] || "1");
+        let signo = matchLineal[2];
+        let b = parseFloat(matchLineal[3]);
+
+        let x = b / a;
+        if (a < 0) {
+          if (signo.includes(">")) signo = signo.replace(">", "<");
+          else if (signo.includes("<")) signo = signo.replace("<", ">");
         }
-      } catch (error) {
-        resDiv.innerHTML = `<p style="color:red;">Error: Verifica que la expresión esté correctamente escrita.</p>`;
-      }
-    }
 
-    function resolverLineal(exp) {
-      const match = exp.match(/^([+-]?\d*)x([<>]=?|=)([+-]?\d+)$/);
-      if (!match) throw new Error();
+        resultado.innerHTML = `<h3>Solución: x ${signo} ${Math.abs(x)}</h3>`;
 
-      let coef = parseFloat(match[1] || "1");
-      let signo = match[2];
-      let constante = parseFloat(match[3]);
+        let x_vals = [];
+        let y_vals = [];
+        for (let i = -10; i <= 10; i += 0.1) {
+          x_vals.push(i);
+          y_vals.push(a * i);
+        }
 
-      let x = constante / coef;
-      if (coef < 0) {
-        // invertir el signo si se divide por negativo
-        signo = signo.replace("<", "#").replace(">", "<").replace("#", ">");
-      }
+        Plotly.newPlot('grafica', [{
+          x: x_vals, y: y_vals, type: 'scatter', name: 'f(x)'
+        }, {
+          x: x_vals, y: Array(x_vals.length).fill(b), type: 'scatter', name: 'Constante'
+        }], {
+          title: 'Gráfica Lineal',
+          xaxis: { title: 'x' },
+          yaxis: { title: 'f(x)' }
+        });
 
-      document.getElementById("resultado").innerHTML = `
-        <h3>Desigualdad Lineal</h3>
-        <p>Solución: x ${signo} ${Math.abs(x)}</p>
-        <p>Intervalo: ${
-          signo === ">" ? `(${x}, ∞)` :
-          signo === ">=" ? `[${x}, ∞)` :
-          signo === "<" ? `(-∞, ${x})` :
-          `[−∞, ${x}]`
-        }</p>
-      `;
-    }
+      } else if (matchCuad) {
+        let a = parseFloat(matchCuad[1] || "1");
+        let b = parseFloat(matchCuad[2] || "0");
+        let c = parseFloat(matchCuad[3] || "0");
+        let signo = matchCuad[4];
 
-    function resolverCuadratica(exp) {
-      const match = exp.match(/^([+-]?\d*)x\^2([+-]\d*)x([+-]\d*)([<>]=?|=)0$/);
-      if (!match) throw new Error();
+        const discriminante = b*b - 4*a*c;
+        if (discriminante < 0) {
+          resultado.innerHTML = `<h3>No hay soluciones reales</h3>`;
+        } else {
+          const x1 = (-b + Math.sqrt(discriminante)) / (2 * a);
+          const x2 = (-b - Math.sqrt(discriminante)) / (2 * a);
+          const [min, max] = [x1, x2].sort((x, y) => x - y);
 
-      const a = parseFloat(match[1] || "1");
-      const b = parseFloat(match[2]);
-      const c = parseFloat(match[3]);
-      const signo = match[4];
+          let intervalo = "";
+          if (signo === "<") intervalo = `(${min.toFixed(2)}, ${max.toFixed(2)})`;
+          else if (signo === "<=") intervalo = `[${min.toFixed(2)}, ${max.toFixed(2)}]`;
+          else if (signo === ">") intervalo = `(-∞, ${min.toFixed(2)}) ∪ (${max.toFixed(2)}, ∞)`;
+          else if (signo === ">=") intervalo = `(-∞, ${min.toFixed(2)}] ∪ [${max.toFixed(2)}, ∞)`;
+          else intervalo = `x = ${min.toFixed(2)} o x = ${max.toFixed(2)}`;
 
-      const discriminante = b * b - 4 * a * c;
-      let texto = `<h3>Desigualdad Cuadrática</h3>`;
-      texto += `<p>Coeficientes: a=${a}, b=${b}, c=${c}</p>`;
-      texto += `<p>Discriminante: Δ = ${discriminante}</p>`;
-
-      if (discriminante < 0) {
-        texto += "<p>No hay raíces reales.</p>";
-        texto += (a > 0 && (signo === "<" || signo === "<=")) || 
-                 (a < 0 && (signo === ">" || signo === ">=")) 
-                 ? "<p>Solución: Vacío</p>" 
-                 : "<p>Solución: Todos los reales</p>";
-      } else {
-        const x1 = (-b + Math.sqrt(discriminante)) / (2 * a);
-        const x2 = (-b - Math.sqrt(discriminante)) / (2 * a);
-        const [min, max] = [x1, x2].sort((a, b) => a - b);
-
-        texto += `<p>Raíces: x₁ = ${min.toFixed(2)}, x₂ = ${max.toFixed(2)}</p>`;
-
-        let intervalo;
-        if (signo === "<") {
-          intervalo = a > 0 ? `(${min.toFixed(2)}, ${max.toFixed(2)})` : `(-∞, ${min.toFixed(2)}) ∪ (${max.toFixed(2)}, ∞)`;
-        } else if (signo === "<=") {
-          intervalo = a > 0 ? `[${min.toFixed(2)}, ${max.toF]()
+          resultado.inne
